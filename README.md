@@ -80,6 +80,8 @@ cp -R structable-linux-x86_64/StructableToolchain_StructableCore.resources "$HOM
 
 For every user of a machine, or in a container or cloud agent environment's setup script, run the same steps as root with `/usr/local/bin` in place of `$HOME/.local/bin`.
 
+If you share the tool with other people, for example in a container image, keep `TERMS.md` and `THIRD-PARTY-NOTICES.txt` from the archive with it. The [terms](TERMS.md) require both.
+
 ### Check the install
 
 ```sh

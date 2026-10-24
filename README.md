@@ -7,7 +7,7 @@ People get a native Mac app. Agents get MCP. The file needs neither, so the work
 
 The free `structable` command and MCP server for Structable Documents, on macOS and Linux.
 
-A Structable Document is a folder of plain files: `data.csv` for the rows, `schema.json` for the column types, Markdown rowdocs under `Rowdocs/`, `views.json` for saved views and `Metrics/` for metrics. [Structable](https://cynapse.com/structable) is the native Mac app. This tool lets scripts and AI agents read and write the same documents without the app, through typed values, stable row IDs and change tokens instead of raw file edits.
+A Structable Document is a folder of plain files: `data.csv` for the rows, `schema.json` for the column types, Markdown rowdocs under `Rowdocs/`, `views.json` for saved views and `Metrics/` for metrics. Structable is the native Mac app. This tool lets scripts and AI agents read and write the same documents without the app, through typed values, stable row IDs and change tokens instead of raw file edits.
 
 This repository holds the release downloads and these instructions. The tool's source code is not published here.
 
@@ -26,9 +26,9 @@ Reads and writes are free. They don't need the Structable app or a Structable Pr
 | Download | Runs on |
 | --- | --- |
 | `structable-macos-arm64.tar.gz` | macOS 27 or later on Apple silicon |
-| `structable-linux-x86_64.tar.gz` | 64-bit Intel or AMD Linux with glibc 2.34 or later and libcurl, for example Ubuntu 22.04 or later, Debian 12 or later, Fedora, Red Hat Enterprise Linux 9 and compatible distributions, and Amazon Linux 2023 |
+| `structable-linux-x86_64.tar.gz` | 64-bit Intel or AMD Linux with glibc 2.34 or later, libstdc++ from GCC 11 or later (`GLIBCXX_3.4.29`) and libcurl, for example Ubuntu 22.04 or later, Debian 12 or later, Fedora, Red Hat Enterprise Linux 9 and compatible distributions, and Amazon Linux 2023 |
 
-On Linux, `libcurl` comes with `curl`, so the install steps below already need it. A minimal container may lack it: install `libcurl4` (Debian and Ubuntu) or `libcurl` (Fedora and Red Hat). Linux on ARM and Alpine Linux aren't supported.
+On Linux, `libcurl` comes with `curl`, which the install steps below already need, and `libstdc++` comes with nearly every distribution. A minimal container may lack them: install `libcurl4` and `libstdc++6` (Debian and Ubuntu) or `libcurl` and `libstdc++` (Fedora, Red Hat and Amazon Linux). Linux on ARM and Alpine Linux aren't supported.
 
 Each archive holds the `structable` executable, its companion resources folder, `BUILD-INFO.txt` (the release, source commit and compiler), `THIRD-PARTY-NOTICES.txt` and `TERMS.md`.
 
@@ -109,13 +109,13 @@ claude mcp add --scope user structable -- "$HOME/.local/bin/structable" mcp
 codex mcp add structable -- "$HOME/.local/bin/structable" mcp
 ```
 
-**Claude desktop and other MCP clients** that launch local stdio servers and read structured results or their JSON text mirror can use a configuration like this one. Replace the path with yours, since most clients don't expand `~`:
+**Claude desktop and other MCP clients** that launch local stdio servers and read structured results or their JSON text mirror can use a configuration like this one. Replace the path with yours (on Linux it starts with `/home/`), since most clients don't expand `~`:
 
 ```json
 {
   "mcpServers": {
     "structable": {
-      "command": "/home/you/.local/bin/structable",
+      "command": "/Users/you/.local/bin/structable",
       "args": ["mcp"]
     }
   }

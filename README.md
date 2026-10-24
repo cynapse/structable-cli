@@ -30,11 +30,13 @@ Reads and writes are free. They don't need the Structable app or a Structable Pr
 
 On Linux, `libcurl` comes with `curl`, so the install steps below already need it. A minimal container may lack it: install `libcurl4` (Debian and Ubuntu) or `libcurl` (Fedora and Red Hat). Linux on ARM and Alpine Linux aren't supported.
 
-Each archive holds the `structable` executable, the resources folder it needs beside it, `BUILD-INFO.txt` (the release, source commit and compiler), `THIRD-PARTY-NOTICES.txt` and `TERMS.md`.
+Each archive holds the `structable` executable, its companion resources folder, `BUILD-INFO.txt` (the release, source commit and compiler), `THIRD-PARTY-NOTICES.txt` and `TERMS.md`.
 
 ## Install
 
-Both platforms follow the same steps: download the archive and the checksum list, check the archive against it, then copy the executable **and its resources folder** into the same directory. The executable can't run without that folder beside it. If any step fails, the rest don't run, so a failed download or check installs nothing.
+Both platforms follow the same steps: download the archive and checksum list, verify the archive, then copy the executable **and its resources folder** into the same directory. Commands that load bundled templates, including `guide` and template-based document creation, require that folder. Other commands can work without it.
+
+Stop running CLI and MCP processes before installing or replacing the tool. These steps copy the executable and resources folder separately, so replacement is not atomic. A failed download or checksum check leaves the installation untouched; a later failure during replacement can leave an incomplete installation. Complete the installation before restarting the tool.
 
 These steps install into `~/.local/bin`. The commands download the latest release; to pin one, replace `latest/download` with `download/<tag>`, using a tag from the [Releases](https://github.com/cynapse/structable-cli/releases) page.
 
@@ -89,7 +91,7 @@ structable --version
 structable guide | head
 ```
 
-If the shell can't find `structable`, add `~/.local/bin` to your `PATH` or use the full path. `structable --version` prints the tool's interface version (for example `0.1.0`), which doesn't change with every release; `BUILD-INFO.txt` in the archive names the exact release.
+If the shell can't find `structable`, add `~/.local/bin` to your `PATH` or use the full path. `structable --version` reports the CLI/MCP contract version with the packaged build, for example `0.1.0+1222`. Without valid build metadata, it reports the contract version alone, such as `0.1.0`. `BUILD-INFO.txt` records the release and source identity.
 
 ## Connect an AI agent over MCP
 
@@ -137,7 +139,7 @@ structable describe "$PWD/Bugs.structable"
 
 ## Update or uninstall
 
-The tool doesn't update itself. To update, repeat the install steps with the new release; they replace the executable and its resources folder together.
+The tool doesn't update itself. To update, stop running CLI and MCP processes, then repeat the install steps with the new release. The executable and resources folder are replaced separately; finish the installation and check it before restarting your clients.
 
 To uninstall, delete both from the directory you installed into:
 
@@ -151,8 +153,8 @@ Then remove the server from any MCP client you registered it with, for example `
 
 ## Good to know
 
-- **Write through the tool.** It checks every value against the column's type and keeps row IDs, rowdocs and derived files consistent. Pass the `changeToken` from your last read as `--expected-change-token` (MCP: `expectedChangeToken`) so a write fails instead of overwriting someone else's newer change.
-- **Failed writes.** A write that fails validation saves nothing. A write that fails partway through (an `io_failure`) can leave some changes saved, so read the document again before retrying. Keep backups or use version control for documents that matter.
+- **Write through the tool.** It checks values against column types and keeps row IDs, rowdocs and derived files consistent. Cooperating Structable tools serialize writes to a document. When a write depends on an earlier read, pass that read's `changeToken` as `--expected-change-token` (MCP: `expectedChangeToken`). If the token is stale, read the current document and reconcile the change before retrying. A workflow spanning several calls is not one transaction; direct file edits do not participate in tool locking.
+- **Failed writes.** A write that fails validation saves nothing. An `io_failure` can mean changes were saved before the failure. Follow its recovery instructions; if changes may have been saved, read the document and affected rowdocs again before retrying. Keep backups or use version control for documents that matter.
 - **File access.** The standalone tool can open whatever the account running it can open; it has no folder grants of its own. `discover` needs an explicit folder to list.
 - **Linux.** [The Structable CLI on Linux](LINUX.md) says what the tool needs from the file system and what it does when a change can't finish.
 

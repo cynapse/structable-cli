@@ -171,4 +171,4 @@ The tool runs on your computer. It doesn't send your documents or information ab
 - `structable --help`, `structable <command> --help` and `structable guide` document every command and value format.
 - Report a problem or ask a question in this repository's [Issues](https://github.com/cynapse/structable-cli/issues). Include `BUILD-INFO.txt` from your archive, your platform, and the command or MCP tool call with its full error. Issues are public, so leave out anything sensitive, such as your documents' contents or private file paths.
 
-Structable is a trademark of Cynapse.
+Structable is a Cynapse invention

@@ -56,7 +56,7 @@ cd "$(mktemp -d)"
 base=https://github.com/cynapse/structable-cli/releases/latest/download
 curl -fsSLO "$base/structable-macos-arm64.tar.gz"
 curl -fsSLO "$base/SHA256SUMS"
-awk '$2 == "structable-macos-arm64.tar.gz" { print; count++ } END { if (count != 1) exit 1 }' SHA256SUMS > selected.sha256
+awk '$2 == "structable-macos-arm64.tar.gz" { if (NF != 2 || length($1) != 64 || $1 ~ /[^0123456789abcdefABCDEF]/) exit 1; print; count++ } END { if (count != 1) exit 1 }' SHA256SUMS > selected.sha256
 shasum -a 256 -c selected.sha256
 tar -xzf structable-macos-arm64.tar.gz
 
@@ -85,7 +85,7 @@ cd "$(mktemp -d)"
 base=https://github.com/cynapse/structable-cli/releases/latest/download
 curl -fsSLO "$base/$asset"
 curl -fsSLO "$base/SHA256SUMS"
-awk -v file="$asset" '$2 == file { print; count++ } END { if (count != 1) exit 1 }' SHA256SUMS > selected.sha256
+awk -v file="$asset" '$2 == file { if (NF != 2 || length($1) != 64 || $1 ~ /[^0123456789abcdefABCDEF]/) exit 1; print; count++ } END { if (count != 1) exit 1 }' SHA256SUMS > selected.sha256
 sha256sum -c selected.sha256
 tar -xzf "$asset"
 

@@ -23,13 +23,11 @@ Reads and writes are free. They don't need the Structable app or a Structable Pr
 
 ## Requirements
 
-**ARM preparation draft:** the published `v1.0-1223` release contains the Mac arm64 and Linux x86_64 downloads only. Linux arm64 support and the architecture-selecting install steps below are prepared for a future release; do not treat them as an available ARM download until that release is published and its download checks pass.
-
 | Download | Runs on |
 | --- | --- |
 | `structable-macos-arm64.tar.gz` | macOS 27 or later on Apple silicon |
 | `structable-linux-x86_64.tar.gz` | 64-bit Intel or AMD Linux with glibc 2.34 or later, libstdc++ from GCC 11 or later (`GLIBCXX_3.4.29`) and libcurl, for example Ubuntu 22.04 or later, Debian 12 or later, Fedora, Red Hat Enterprise Linux 9 and compatible distributions, and Amazon Linux 2023 |
-| `structable-linux-arm64.tar.gz` (prepared, not published) | 64-bit ARM Linux with the same glibc, libstdc++ and libcurl requirements |
+| `structable-linux-arm64.tar.gz` | 64-bit ARM Linux with the same glibc, libstdc++ and libcurl requirements |
 
 On Linux, `libcurl` comes with `curl`, which the install steps below already need, and `libstdc++` comes with nearly every distribution. A minimal container may lack them: install `libcurl4` and `libstdc++6` (Debian and Ubuntu) or `libcurl` and `libstdc++` (Fedora, Red Hat and Amazon Linux). Alpine Linux and other musl-based systems aren't supported. Use the archive for the architecture of the environment where the tool will run; a cloud agent needs its own installation.
 
@@ -37,7 +35,9 @@ Each archive holds the `structable` executable, its companion resources folder, 
 
 ## Install
 
-Both platforms follow the same steps: download the archive and checksum list, verify the archive, then copy the executable **and its resources folder** into the same directory. Commands that load bundled templates, including `guide` and template-based document creation, require that folder. Other commands can work without it.
+All downloads follow the same steps: download the archive and its checksum file, verify the archive, then copy the executable **and its resources folder** into the same directory. Commands that load bundled templates, including `guide` and template-based document creation, require that folder. Other commands can work without it.
+
+The Mac and Linux x86_64 archives use `SHA256SUMS`. The Linux arm64 archive uses `structable-linux-arm64.tar.gz.sha256`. The commands below select the matching checksum file automatically.
 
 Stop running CLI and MCP processes before installing or replacing the tool. These steps copy the executable and resources folder separately, so replacement is not atomic. A failed download or checksum check leaves the installation untouched; a later failure during replacement can leave an incomplete installation. Complete the installation before restarting the tool.
 
@@ -81,10 +81,12 @@ case "$(uname -s):$(uname -m)" in
 esac
 payload=structable-$platform
 asset=$payload.tar.gz
+checksums=SHA256SUMS
+if [ "$platform" = linux-arm64 ]; then checksums="$asset.sha256"; fi
 cd "$(mktemp -d)"
 base=https://github.com/cynapse/structable-cli/releases/latest/download
 curl -fsSLO "$base/$asset"
-curl -fsSLO "$base/SHA256SUMS"
+curl -fsSL "$base/$checksums" -o SHA256SUMS
 awk -v file="$asset" '$2 == file { if (NF != 2 || length($1) != 64 || $1 ~ /[^0123456789abcdefABCDEF]/) exit 1; printf "%s  %s\n", $1, $2; count++ } END { if (count != 1) exit 1 }' SHA256SUMS > selected.sha256
 sha256sum -c selected.sha256
 tar -xzf "$asset"

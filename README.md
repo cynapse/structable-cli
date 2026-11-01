@@ -23,12 +23,15 @@ Reads and writes are free. They don't need the Structable app or a Structable Pr
 
 ## Requirements
 
+**ARM preparation draft:** the published `v1.0-1223` release contains the Mac arm64 and Linux x86_64 downloads only. Linux arm64 support and the architecture-selecting install steps below are prepared for a future release; do not treat them as an available ARM download until that release is published and its download checks pass.
+
 | Download | Runs on |
 | --- | --- |
 | `structable-macos-arm64.tar.gz` | macOS 27 or later on Apple silicon |
 | `structable-linux-x86_64.tar.gz` | 64-bit Intel or AMD Linux with glibc 2.34 or later, libstdc++ from GCC 11 or later (`GLIBCXX_3.4.29`) and libcurl, for example Ubuntu 22.04 or later, Debian 12 or later, Fedora, Red Hat Enterprise Linux 9 and compatible distributions, and Amazon Linux 2023 |
+| `structable-linux-arm64.tar.gz` (prepared, not published) | 64-bit ARM Linux with the same glibc, libstdc++ and libcurl requirements |
 
-On Linux, `libcurl` comes with `curl`, which the install steps below already need, and `libstdc++` comes with nearly every distribution. A minimal container may lack them: install `libcurl4` and `libstdc++6` (Debian and Ubuntu) or `libcurl` and `libstdc++` (Fedora, Red Hat and Amazon Linux). Linux on ARM and Alpine Linux aren't supported.
+On Linux, `libcurl` comes with `curl`, which the install steps below already need, and `libstdc++` comes with nearly every distribution. A minimal container may lack them: install `libcurl4` and `libstdc++6` (Debian and Ubuntu) or `libcurl` and `libstdc++` (Fedora, Red Hat and Amazon Linux). Alpine Linux and other musl-based systems aren't supported. Use the archive for the architecture of the environment where the tool will run; a cloud agent needs its own installation.
 
 Each archive holds the `structable` executable, its companion resources folder, `BUILD-INFO.txt` (the release, source commit and compiler), `THIRD-PARTY-NOTICES.txt` and `TERMS.md`.
 
@@ -45,11 +48,16 @@ These steps install into `~/.local/bin`. The commands download the latest releas
 ```sh
 (
 set -e
+case "$(uname -s):$(uname -m)" in
+    Darwin:arm64) ;;
+    *) echo "This download requires macOS on Apple silicon." >&2; exit 1 ;;
+esac
 cd "$(mktemp -d)"
 base=https://github.com/cynapse/structable-cli/releases/latest/download
 curl -fsSLO "$base/structable-macos-arm64.tar.gz"
 curl -fsSLO "$base/SHA256SUMS"
-grep ' structable-macos-arm64.tar.gz$' SHA256SUMS | shasum -a 256 -c -
+awk '$2 == "structable-macos-arm64.tar.gz" { print; count++ } END { if (count != 1) exit 1 }' SHA256SUMS > selected.sha256
+shasum -a 256 -c selected.sha256
 tar -xzf structable-macos-arm64.tar.gz
 
 mkdir -p "$HOME/.local/bin"
@@ -66,19 +74,29 @@ If you use the Structable app, you may not need this download: the app includes 
 ```sh
 (
 set -e
+case "$(uname -s):$(uname -m)" in
+    Linux:x86_64) platform=linux-x86_64 ;;
+    Linux:aarch64|Linux:arm64) platform=linux-arm64 ;;
+    *) echo "This download requires Linux on x86_64 or arm64." >&2; exit 1 ;;
+esac
+payload=structable-$platform
+asset=$payload.tar.gz
 cd "$(mktemp -d)"
 base=https://github.com/cynapse/structable-cli/releases/latest/download
-curl -fsSLO "$base/structable-linux-x86_64.tar.gz"
+curl -fsSLO "$base/$asset"
 curl -fsSLO "$base/SHA256SUMS"
-grep ' structable-linux-x86_64.tar.gz$' SHA256SUMS | sha256sum -c -
-tar -xzf structable-linux-x86_64.tar.gz
+awk -v file="$asset" '$2 == file { print; count++ } END { if (count != 1) exit 1 }' SHA256SUMS > selected.sha256
+sha256sum -c selected.sha256
+tar -xzf "$asset"
 
 mkdir -p "$HOME/.local/bin"
-install -m 0755 structable-linux-x86_64/structable "$HOME/.local/bin/structable"
+install -m 0755 "$payload/structable" "$HOME/.local/bin/structable"
 rm -rf "$HOME/.local/bin/StructableToolchain_StructableCore.resources"
-cp -R structable-linux-x86_64/StructableToolchain_StructableCore.resources "$HOME/.local/bin/"
+cp -R "$payload/StructableToolchain_StructableCore.resources" "$HOME/.local/bin/"
 )
 ```
+
+The Linux steps choose x86_64 or arm64 from `uname -m` and refuse other architectures. A pinned older release may not contain the selected archive; a failed download leaves the existing installation untouched. These steps do not provide emulation or convert an installation for a different machine.
 
 For every user of a machine, or in a container or cloud agent environment's setup script, run the same steps as root with `/usr/local/bin` in place of `$HOME/.local/bin`.
 

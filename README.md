@@ -15,8 +15,8 @@ This repository holds the release downloads and these instructions. The tool's s
 
 One executable, `structable`, with three ways in:
 
-- **Commands** for scripts and terminals: `describe`, `query`, `add-rows`, `update-rows`, `rowdocs`, `transfer` (CSV and TSV import and export) and the rest, 17 in all. Add `--json` for machine-readable output.
-- **`structable mcp`**, a local stdio MCP server with the same 17 capabilities as tools, for AI agents.
+- **Commands** for scripts and terminals: `describe`, `query`, `add-rows`, `upsert-rows`, `update-rows`, `rowdocs`, `transfer` (CSV and TSV import and export) and the rest, 18 in all. Add `--json` for machine-readable output.
+- **`structable mcp`**, a local stdio MCP server with the same 18 capabilities as tools, for AI agents.
 - **`structable shell`**, an interactive session for exploring a document.
 
 Reads and writes are free. They don't need the Structable app or a Structable Pro subscription; Pro is about creating and editing in the Mac app.
@@ -32,6 +32,10 @@ Reads and writes are free. They don't need the Structable app or a Structable Pr
 On Linux, `libcurl` comes with `curl`, which the install steps below already need, and `libstdc++` comes with nearly every distribution. A minimal container may lack them: install `libcurl4` and `libstdc++6` (Debian and Ubuntu) or `libcurl` and `libstdc++` (Fedora, Red Hat and Amazon Linux). Alpine Linux and other musl-based systems aren't supported. Use the archive for the architecture of the environment where the tool will run; a cloud agent needs its own installation.
 
 Each archive holds the `structable` executable, its companion resources folder, `BUILD-INFO.txt` (the release, source commit and compiler), `THIRD-PARTY-NOTICES.txt` and `TERMS.md`.
+
+## Document compatibility
+
+This release reads package formats **2.0.x and 2.1.x** and saves **2.1.0**. Reading an older document does not change it; its next successful save through the new writer upgrades it. Older 2.0-only clients refuse 2.1 documents, so update all app, CLI and MCP writers before resuming shared editing. There is no 2.0 write-compatibility mode. See [Upgrading documents and clients](MIGRATION.md) before a shared rollout.
 
 ## Install
 
@@ -144,6 +148,8 @@ codex mcp add structable -- "$HOME/.local/bin/structable" mcp
 
 Every MCP tool result comes back in `structuredContent` and as full JSON text in `content`, so clients that forward only text can read it too. After you configure a client, restart it, start a new session and ask the agent to call `structable_guide` and summarize it. A summary of the guide confirms the agent can read results; seeing only a title means the setup needs checking.
 
+After an upgrade, check the actual server executable as well as your shell command. Some clients cache tool catalogs: restart the server and refresh the client session/catalog, then verify the new tools are visible and call the guide. A current server with an old client catalog is not a verified upgrade.
+
 The agent works where it runs. An agent on your computer can open the documents your account can open. A cloud agent needs the tool installed in its own environment, and it works on the files there, not on your computer.
 
 ## First commands
@@ -156,6 +162,42 @@ structable describe "$PWD/Bugs.structable"
 ```
 
 `structable guide` lists the templates, value encodings and filter shapes; `structable --help` and `structable <command> --help` explain each command. Paths must be absolute (a leading `~` is expanded).
+
+## Exact RowID upsert
+
+`upsert-rows` updates existing exact IDs and creates missing exact IDs in one request:
+
+```sh
+structable upsert-rows "$PWD/Bugs.structable" --rows '[{"rowID":"issue001","values":{"Title":"Check imported rows","Status":"Inbox"}},{"rowID":"issue002","values":{"Title":"Review saved filters"}}]' --json
+```
+
+The MCP tool is `structable_upsert_rows`. Supply 1–1,000 unique `{rowID, values}` entries, inline or as a JSON file with `--rows @/absolute/rows.json`. IDs must be canonical lowercase alphanumeric strings; new IDs must also fit the canonical `ID.md` filename. Existing row order stays unchanged; new rows append in request order. The result includes ordered `rowOutcomes` (`created`, `updated`, `unchanged`) and `upsertCounts`.
+
+Omitted cells stay unchanged, `null` clears ordinary cells, and an empty `values` map ensures the row exists. New rows receive the normal creation defaults and managed timestamps. Use `add-rows` for generated IDs. ID renaming, timestamp writes and rowdoc fields are refused; read/write rowdoc bodies separately with `rowdocs`. A later rowdoc failure does not undo a completed upsert.
+
+Use the current `--expected-change-token` when the write depends on a read. Validation failure saves none of the request; save failures may leave partial or uncertain results, so reread and reconcile before retrying. Splitting larger work across calls does not make it one transaction.
+
+CSV/TSV `transfer` imports still create a document or append rows. They do not perform upsert or match records by another column. For an import workflow that needs upsert, map the records to the explicit RowID JSON shape first.
+
+## Rolling date filters
+
+The shared filter contract supports `dateNextDays` and `dateLastDays` with an integer count from 1 to 365. Both include today: next 3 days means today and the following two calendar days; last 3 means today and the preceding two. `dateOnOrAfterToday` includes today and every later date; `dateBeforeToday` includes only earlier dates.
+
+These use the existing local calendar/timezone rules, not fixed 24-hour durations. Date-only values retain their date-only interpretation. The modes work in queries, saved views and metric filters; the Mac app exposes them in both the view filter panel and metric editor. See `structable guide` for the complete filter object shape. Persisting these definitions requires format 2.1, so update every client before sharing the saved document.
+
+## Document descriptions
+
+Read the package's README with `structable describe /absolute/Document.structable --configuration description --json`. The JSON result includes the body guard and continuation metadata; follow every returned page before replacing the body. `bodyDigest` covers the whole canonical description, even when only one page is returned; a fresh digest is not proof that you read the whole body.
+
+`manage-document` provides `set_description`, `append_description` and `clear_description`. For example, given an existing UTF-8 Markdown file:
+
+```sh
+structable manage-document "$PWD/Bugs.structable" --action set_description --source-path "$PWD/purpose.md"
+```
+
+Set accepts one inline value (`--description` or `--content`) or `--source-path`. Set/clear support `--expected-body-digest` as an optional body guard. Append requires **both** `--expected-change-token` and `--expected-body-digest`; it appends the literal fragment to the full server-side body and adds no separator. Include any desired newline yourself, and reread after an uncertain write rather than replaying blindly. The same actions are available through `structable_manage_document`.
+
+Descriptions keep their existing README semantics: CRLF/CR become LF and whitespace-only content is absent. Rowdoc bodies remain exact text. File input and append fragments are limited to 4 MiB; existing larger descriptions remain readable and appendable. UTF-8 BOM characters are preserved. These operations do not introduce a new description storage format.
 
 ## Update or uninstall
 

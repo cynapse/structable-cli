@@ -18,6 +18,10 @@ The tool refuses the change and leaves the destination as it was. Parent folders
 
 The tool deletes the previous version once the new one is in place. If that cleanup fails, it reports the failure on standard error, and all or part of the previous version stays in a hidden sibling folder named `.<name>.structable.<UUID>.tmp`, with its original permissions and any data you removed. Each failed cleanup can leave another such folder. It's a leftover, not a backup, so don't restore it over the document. Your MCP client may not show standard error, so look beside the document for these folders even when no failure was reported. Delete one once you're sure you don't need what's in it.
 
+## Format upgrades
+
+The same [document and client migration rules](MIGRATION.md) apply on both Linux architectures. Updating one bot does not update other bot processes, client catalogs or document copies. Pause all writers to a shared document and verify each installation before its first 2.1 save.
+
 ## Without the Mac app
 
 There's no Structable app on Linux. `create-document --open-in-app` creates the document and says in its result that there's no app to open it in.

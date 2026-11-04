@@ -20,7 +20,9 @@ The tool deletes the previous version once the new one is in place. If that clea
 
 ## Format upgrades
 
-The same [document and client migration rules](MIGRATION.md) apply on both Linux architectures. Updating one bot does not update other bot processes, client catalogs or document copies. Pause all writers to a shared document and verify each installation before its first 2.1 save.
+The same [document and client migration rules](MIGRATION.md) apply on both Linux architectures. Updating one bot does not update other bot processes, client catalogs or document copies. Pause all writers to a shared document and verify each installation before its explicit context upgrade. Documents without a time context remain readable under the host calendar with source `legacyHost`; ordinary writes refuse until `upgrade_time_context` supplies an owner-selected zone and a current change token.
+
+New document creation and CSV/TSV import into a new document capture the Linux process's system zone before interpreting dates. In a container or cloud agent, that is the environment where the process runs. Use `--time-zone` to select a supported IANA zone or `UTC` explicitly; an unrepresentable system zone requires that override. Once configured, a document uses its saved zone and week rules across machines. Built-in template authoring in UTC does not force new documents to use UTC.
 
 ## Without the Mac app
 

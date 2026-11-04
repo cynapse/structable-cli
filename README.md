@@ -35,7 +35,7 @@ Each archive holds the `structable` executable, its companion resources folder, 
 
 ## Document compatibility
 
-This release reads package formats **2.0.x and 2.1.x** and saves **2.1.0**. Reading an older document does not change it; its next successful save through the new writer upgrades it. Older 2.0-only clients refuse 2.1 documents, so update all app, CLI and MCP writers before resuming shared editing. There is no 2.0 write-compatibility mode. See [Upgrading documents and clients](MIGRATION.md) before a shared rollout.
+This release reads package formats **2.0.x and 2.1.x** and saves **2.1.0**. Reading an older document does not change it. A document without a persisted time context remains readable using the host calendar, reported as `legacyHost`; ordinary writes refuse until its owner selects a time zone and explicitly upgrades it. Older 2.0-only clients refuse 2.1 documents, so update all app, CLI and MCP writers before resuming shared editing. There is no 2.0 write-compatibility mode. See [Upgrading documents and clients](MIGRATION.md) for the guarded upgrade workflow.
 
 ## Install
 
@@ -179,11 +179,25 @@ Use the current `--expected-change-token` when the write depends on a read. Vali
 
 CSV/TSV `transfer` imports still create a document or append rows. They do not perform upsert or match records by another column. For an import workflow that needs upsert, map the records to the explicit RowID JSON shape first.
 
-## Rolling date filters
+## Document time context and date periods
 
-The shared filter contract supports `dateNextDays` and `dateLastDays` with an integer count from 1 to 365. Both include today: next 3 days means today and the following two calendar days; last 3 means today and the preceding two. `dateOnOrAfterToday` includes today and every later date; `dateBeforeToday` includes only earlier dates.
+Each configured document persists a Gregorian calendar, a named time zone and its week start. New `create-document` and `transfer --action import_create` operations capture the process's system zone once, before interpreting dates, and default to Monday weeks. Use `--time-zone` to choose a supported IANA name such as `Europe/London`, or `UTC`; results report the saved `timeContext`. If the system zone cannot be represented, supply an explicit zone. Built-in templates are authored in UTC for repeatability, but creating a document from one replaces that authoring context with the captured or explicitly selected creation context. Later saves retain the document's context.
 
-These use the existing local calendar/timezone rules, not fixed 24-hour durations. Date-only values retain their date-only interpretation. The modes work in queries, saved views and metric filters; the Mac app exposes them in both the view filter panel and metric editor. See `structable guide` for the complete filter object shape. Persisting these definitions requires format 2.1, so update every client before sharing the saved document.
+Read the context with `structable describe /absolute/Document.structable --configuration timeContext --json`. For a missing context, use `manage-document --action upgrade_time_context`; for an already configured document, use `set_time_context`. Both require an explicit `--time-zone` and current `--expected-change-token`, and run separately from other edits. Optional `--week-starts-on` selects a weekday; omission means Monday on upgrade or the existing week start on a configured document. See [migration](MIGRATION.md) before choosing a context for an existing shared document.
+
+Canonical relative-date conditions use `datePeriod` in queries, saved views and metric filters. This filter selects the last seven calendar days including today:
+
+```json
+{"combination":"and","filters":[{"columnId":"Target Date","condition":{"type":"datePeriod","period":{"kind":"window","unit":"day","count":7,"endOffset":0,"extent":"complete"}}}]}
+```
+
+A window contains `count` consecutive units ending at `endOffset` relative to the current unit. Set `endOffset` to `-7` in that example for the seven days preceding the most recent seven. Units are `day`, `week`, `month`, `quarter` and `year`; integer `count` is 1–10,000 and offsets are −10,000–10,000. `extent: "complete"` includes whole units. For this month through today, use `unit: "month"`, `count: 1`, `endOffset: 0` and `extent: "throughCorrespondingDay"`. That extent permits one non-day unit with a nonpositive offset and includes the entire corresponding day, including future timestamps today. It does not mean up to the current instant.
+
+Open-ended conditions use a boundary, for example `{"type":"datePeriod","period":{"kind":"boundary","unit":"day","offset":0,"relation":"onOrAfter"}}` for today and later. `relation: "before"` selects values before the boundary. Boundaries for larger units use the start of the selected week, month, quarter or year.
+
+Periods use the document's zone and week rules, with inclusive lower and exclusive upper bounds, rather than fixed 24-hour durations. Date-only values remain civil dates; timed values use instants. Query results expose `evaluationContext` and bounded `resolvedTemporalFilters`; `resolvedTemporalFilterCount` and `temporalContextTruncated` disclose omitted evidence. Missing-context reads use `legacyHost` and can differ between machines. Legacy filter inputs, including `dateNextDays`, `dateLastDays`, `dateOnOrAfterToday` and `dateBeforeToday`, remain accepted; newly supplied or edited definitions persist canonical periods, while unrelated saves preserve untouched definitions.
+
+Malformed persisted periods, unknown condition types and malformed present contexts refuse loading with a reported path, preserving the original bytes. Unsupported resolution outside Gregorian years 1583–9999 is an explicit error. Preserve a recovery copy and correct the reported definition deliberately. `structable guide` documents the complete filter shapes and constraints.
 
 ## Document descriptions
 

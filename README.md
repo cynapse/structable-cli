@@ -33,10 +33,6 @@ On Linux, `libcurl` comes with `curl`, which the install steps below already nee
 
 Each archive holds the `structable` executable, its companion resources folder, `BUILD-INFO.txt` (the release, source commit and compiler), `THIRD-PARTY-NOTICES.txt` and `TERMS.md`.
 
-## Document compatibility
-
-This release reads package formats **2.0.x and 2.1.x** and saves **2.1.0**. Reading an older document does not change it. A document without a persisted time context remains readable using the host calendar, reported as `legacyHost`; ordinary writes refuse until its owner selects a time zone and explicitly upgrades it. Older 2.0-only clients refuse 2.1 documents, so update all app, CLI and MCP writers before resuming shared editing. There is no 2.0 write-compatibility mode. See [Upgrading documents and clients](MIGRATION.md) for the guarded upgrade workflow.
-
 ## Install
 
 All downloads follow the same steps: download the archive and its checksum file, verify the archive, then copy the executable **and its resources folder** into the same directory. Commands that load bundled templates, including `guide` and template-based document creation, require that folder. Other commands can work without it.
@@ -183,7 +179,7 @@ CSV/TSV `transfer` imports still create a document or append rows. They do not p
 
 Each configured document persists a Gregorian calendar, a named time zone and its week start. New `create-document` and `transfer --action import_create` operations capture the process's system zone once, before interpreting dates, and default to Monday weeks. Use `--time-zone` to choose a supported IANA name such as `Europe/London`, or `UTC`; results report the saved `timeContext`. If the system zone cannot be represented, supply an explicit zone. Built-in templates are authored in UTC for repeatability, but creating a document from one replaces that authoring context with the captured or explicitly selected creation context. Later saves retain the document's context.
 
-Read the context with `structable describe /absolute/Document.structable --configuration timeContext --json`. For a missing context, use `manage-document --action upgrade_time_context`; for an already configured document, use `set_time_context`. Both require an explicit `--time-zone` and current `--expected-change-token`, and run separately from other edits. Optional `--week-starts-on` selects a weekday; omission means Monday on upgrade or the existing week start on a configured document. See [migration](MIGRATION.md) before choosing a context for an existing shared document.
+Read the context with `structable describe /absolute/Document.structable --configuration timeContext --json`. Use `manage-document --action set_time_context` to change a configured document's context. This requires an explicit `--time-zone` and current `--expected-change-token`, and runs separately from other edits. Optional `--week-starts-on` selects a weekday; omission retains the existing week start.
 
 Canonical relative-date conditions use `datePeriod` in queries, saved views and metric filters. This filter selects the last seven calendar days including today:
 
@@ -195,7 +191,7 @@ A window contains `count` consecutive units ending at `endOffset` relative to th
 
 Open-ended conditions use a boundary, for example `{"type":"datePeriod","period":{"kind":"boundary","unit":"day","offset":0,"relation":"onOrAfter"}}` for today and later. `relation: "before"` selects values before the boundary. Boundaries for larger units use the start of the selected week, month, quarter or year.
 
-Periods use the document's zone and week rules, with inclusive lower and exclusive upper bounds, rather than fixed 24-hour durations. Date-only values remain civil dates; timed values use instants. Query results expose `evaluationContext` and bounded `resolvedTemporalFilters`; `resolvedTemporalFilterCount` and `temporalContextTruncated` disclose omitted evidence. Missing-context reads use `legacyHost` and can differ between machines. Legacy filter inputs, including `dateNextDays`, `dateLastDays`, `dateOnOrAfterToday` and `dateBeforeToday`, remain accepted; newly supplied or edited definitions persist canonical periods, while unrelated saves preserve untouched definitions.
+Periods use the document's zone and week rules, with inclusive lower and exclusive upper bounds, rather than fixed 24-hour durations. Date-only values remain civil dates; timed values use instants. Query results expose `evaluationContext` and bounded `resolvedTemporalFilters`; `resolvedTemporalFilterCount` and `temporalContextTruncated` disclose omitted evidence. Legacy filter inputs, including `dateNextDays`, `dateLastDays`, `dateOnOrAfterToday` and `dateBeforeToday`, remain accepted; newly supplied or edited definitions persist canonical periods, while unrelated saves preserve untouched definitions.
 
 Malformed persisted periods, unknown condition types and malformed present contexts refuse loading with a reported path, preserving the original bytes. Unsupported resolution outside Gregorian years 1583–9999 is an explicit error. Preserve a recovery copy and correct the reported definition deliberately. `structable guide` documents the complete filter shapes and constraints.
 
